@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Accès privé</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{--bg:#0e1116;--fg:#e8ecf1;--mu:#8a94a3;--ac:#4fb3c8;--er:#e07a6a;--ca:#171b22;--bd:#2a313c}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,sans-serif;padding:0 16px}
+form{background:var(--ca);border:1px solid var(--bd);border-radius:14px;padding:28px;width:100%;max-width:320px;box-sizing:border-box}
+h1{font-size:18px;margin:0 0 6px}p{margin:0 0 18px;color:var(--mu);font-size:14px}
+input,button{width:100%;box-sizing:border-box;font:inherit;padding:11px 12px;border-radius:9px;border:1px solid var(--bd)}
+input{background:var(--bg);color:var(--fg);margin-bottom:10px}button{background:var(--ac);color:#06232a;border:0;font-weight:600;cursor:pointer}
+#m{min-height:20px;margin-top:10px;font-size:14px;color:var(--er)}
+</style></head><body>
+<form id="f"><h1>Accès privé</h1><p>Entre le code pour voir le dashboard</p>
+<input id="c" type="password" autocomplete="current-password" placeholder="Code" autofocus><button>Entrer</button><div id="m"></div></form>
+<script>
+const CFG={"sel": "51cd3b7a1da14ed1c93b2d4a72ec57f0", "iter": 300000};
+const $=id=>document.getElementById(id);
+$('f').onsubmit=async e=>{e.preventDefault();$('m').style.color='';$('m').textContent='…';
+ try{
+  if(!('serviceWorker' in navigator))throw 'Navigateur non compatible';
+  const sel=Uint8Array.from(CFG.sel.match(/../g),x=>parseInt(x,16));
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('c').value),'PBKDF2',false,['deriveBits']);
+  const raw=await crypto.subtle.deriveBits({name:'PBKDF2',salt:sel,iterations:CFG.iter,hash:'SHA-256'},base,256);
+  const k=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);
+  const b=await (await fetch('enc/check.bin',{cache:'no-store'})).arrayBuffer();
+  try{await crypto.subtle.decrypt({name:'AES-GCM',iv:b.slice(0,12)},k,b.slice(12))}catch{throw 'Mauvais code'}
+  await navigator.serviceWorker.register('sw.js');
+  const reg=await navigator.serviceWorker.ready;
+  await new Promise(ok=>{navigator.serviceWorker.addEventListener('message',ok,{once:true});reg.active.postMessage({raw})});
+  location.href='app/'+(new URLSearchParams(location.search).get('next')||'');
+ }catch(x){$('m').style.color='var(--er)';$('m').textContent=typeof x==='string'?x:'Erreur : '+x}
+};
+</script></body></html>
